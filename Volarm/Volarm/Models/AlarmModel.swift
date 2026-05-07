@@ -66,6 +66,15 @@ final class AlarmModel {
         String(format: "%02d:%02d", hour, minute)
     }
 
+    var timeString12h: String {
+        let h = hour % 12 == 0 ? 12 : hour % 12
+        return String(format: "%d:%02d", h, minute)
+    }
+
+    var amPmString: String {
+        hour < 12 ? "AM" : "PM"
+    }
+
     var daySummary: String {
         if selectedDays.count == 7 { return "Every Day" }
         if selectedDays.isEmpty { return "One Time" }

@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var purchaseManager = PurchaseManager.shared
     @State private var showingContact = false
+    @State private var showingPaywall = false
 
     private let privacyURL = "https://asunnyboy861.github.io/Volarm/privacy.html"
     private let supportURL = "https://asunnyboy861.github.io/Volarm/support.html"
@@ -29,6 +30,9 @@ struct SettingsView: View {
             .sheet(isPresented: $showingContact) {
                 ContactSupportView()
             }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+            }
         }
         .preferredColorScheme(.dark)
     }
@@ -47,6 +51,7 @@ struct SettingsView: View {
                 }
             } else {
                 Button {
+                    showingPaywall = true
                 } label: {
                     HStack {
                         Image(systemName: "crown")

@@ -2,57 +2,62 @@ import SwiftUI
 
 struct AlarmCardView: View {
     let alarm: AlarmModel
+    let onToggle: (Bool) -> Void
+
+    private var disabledColor: Color {
+        Color(hex: "#555555") ?? .gray
+    }
 
     var body: some View {
         HStack(spacing: 16) {
             VolumeIndicatorView(volume: alarm.volume)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(alarm.timeString)
-                    .font(.system(size: 36, weight: .light, design: .rounded))
-                    .foregroundStyle(.white)
+                HStack(spacing: 4) {
+                    Text(alarm.timeString12h)
+                        .font(.system(size: 36, weight: .light, design: .rounded))
+                        .foregroundStyle(alarm.isEnabled ? .white : disabledColor)
+                    Text(alarm.amPmString)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(alarm.isEnabled ? Color(hex: "#8E8E93") ?? .gray : disabledColor)
+                        .textCase(.uppercase)
+                }
 
                 Text(alarm.name)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(alarm.isEnabled ? Color(hex: "#8E8E93") ?? .gray : disabledColor)
 
                 HStack(spacing: 8) {
                     Text(alarm.daySummary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(alarm.isEnabled ? Color(hex: "#8E8E93") ?? .gray : disabledColor)
 
                     if !alarm.label.isEmpty {
-                        Text("•")
-                            .foregroundStyle(.secondary)
+                        Text("\u{2022}")
+                            .foregroundStyle(Color(hex: "#8E8E93") ?? .gray)
                         Text(alarm.label)
                             .font(.caption)
-                            .foregroundStyle(Color.volumeColor(for: alarm.volume))
+                            .foregroundStyle(alarm.isEnabled ? Color.volumeColor(for: alarm.volume) : disabledColor)
                     }
                 }
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("\(Int(alarm.volume * 100))%")
-                    .font(.caption.bold().monospacedDigit())
-                    .foregroundStyle(Color.volumeColor(for: alarm.volume))
+            VStack(alignment: .trailing, spacing: 8) {
+                Toggle("", isOn: Binding(
+                    get: { alarm.isEnabled },
+                    set: { onToggle($0) }
+                ))
+                .tint(Color.volumeColor(for: alarm.volume))
+                .labelsHidden()
 
-                Image(systemName: alarm.isEnabled ? "alarm.fill" : "alarm")
-                    .foregroundStyle(alarm.isEnabled ? Color.volumeColor(for: alarm.volume) : .secondary)
-                    .font(.title3)
+                Text("\(Int(alarm.volume * 100))%")
+                    .font(.caption2.bold().monospacedDigit())
+                    .foregroundStyle(alarm.isEnabled ? Color.volumeColor(for: alarm.volume) : disabledColor)
             }
         }
         .padding(.vertical, 8)
+        .opacity(alarm.isEnabled ? 1.0 : 0.5)
     }
-}
-
-#Preview {
-    List {
-        AlarmCardView(alarm: AlarmModel(name: "Work", hour: 7, minute: 0, volume: 1.0))
-        AlarmCardView(alarm: AlarmModel(name: "Weekend", hour: 9, minute: 30, volume: 0.3))
-        AlarmCardView(alarm: AlarmModel(name: "Nap", hour: 14, minute: 0, volume: 0.5))
-    }
-    .listStyle(.plain)
-    .background(Color.black)
 }

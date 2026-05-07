@@ -15,9 +15,9 @@
 
 | Page | URL | Status |
 |------|-----|--------|
-| Landing Page | https://asunnyboy861.github.io/Volarm/ | ⏳ Pending |
-| Support | https://asunnyboy861.github.io/Volarm/support.html | ⏳ Pending |
-| Privacy Policy | https://asunnyboy861.github.io/Volarm/privacy.html | ⏳ Pending |
+| Landing Page | https://asunnyboy861.github.io/Volarm/ | ✅ Active |
+| Support | https://asunnyboy861.github.io/Volarm/support.html | ✅ Active |
+| Privacy Policy | https://asunnyboy861.github.io/Volarm/privacy.html | ✅ Active |
 
 **Note**: Terms of Use not required for one-time purchase apps. Only Support + Privacy needed.
 

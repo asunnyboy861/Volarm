@@ -24,14 +24,17 @@ final class VolumeManager: ObservableObject {
         stopPreview()
         configureAudioSession()
 
-        guard let url = SoundManager.shared.getSoundURL(for: soundIdentifier) else { return }
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.volume = volume
-            audioPlayer?.numberOfLoops = 0
-            audioPlayer?.play()
-        } catch {
-            print("Failed to play preview: \(error)")
+        if let url = SoundManager.shared.getSoundURL(for: soundIdentifier) {
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: url)
+                audioPlayer?.volume = volume
+                audioPlayer?.numberOfLoops = 0
+                audioPlayer?.play()
+            } catch {
+                SoundManager.shared.playPreview(for: soundIdentifier, volume: volume)
+            }
+        } else {
+            SoundManager.shared.playPreview(for: soundIdentifier, volume: volume)
         }
     }
 
@@ -39,33 +42,36 @@ final class VolumeManager: ObservableObject {
         stopPreview()
         configureAudioSession()
 
-        guard let url = SoundManager.shared.getSoundURL(for: soundIdentifier) else { return }
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.volume = 0.0
-            audioPlayer?.numberOfLoops = -1
-            audioPlayer?.play()
+        if let url = SoundManager.shared.getSoundURL(for: soundIdentifier) {
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: url)
+                audioPlayer?.volume = 0.0
+                audioPlayer?.numberOfLoops = -1
+                audioPlayer?.play()
 
-            let stepInterval: TimeInterval = 0.5
-            let totalSteps = Double(duration) / stepInterval
-            let volumeStep = targetVolume / Float(totalSteps)
+                let stepInterval: TimeInterval = 0.5
+                let totalSteps = Double(duration) / stepInterval
+                let volumeStep = targetVolume / Float(totalSteps)
 
-            fadeTimer = Timer.scheduledTimer(withTimeInterval: stepInterval, repeats: true) { [weak self] timer in
-                Task { @MainActor in
-                    guard let self, let player = self.audioPlayer else {
-                        timer.invalidate()
-                        return
-                    }
-                    let newVolume = min(player.volume + volumeStep, targetVolume)
-                    player.volume = newVolume
-                    if newVolume >= targetVolume {
-                        timer.invalidate()
-                        self.fadeTimer = nil
+                fadeTimer = Timer.scheduledTimer(withTimeInterval: stepInterval, repeats: true) { [weak self] timer in
+                    Task { @MainActor in
+                        guard let self, let player = self.audioPlayer else {
+                            timer.invalidate()
+                            return
+                        }
+                        let newVolume = min(player.volume + volumeStep, targetVolume)
+                        player.volume = newVolume
+                        if newVolume >= targetVolume {
+                            timer.invalidate()
+                            self.fadeTimer = nil
+                        }
                     }
                 }
+            } catch {
+                SoundManager.shared.playSystemSound(for: soundIdentifier)
             }
-        } catch {
-            print("Failed to play with gradual volume: \(error)")
+        } else {
+            SoundManager.shared.playSystemSound(for: soundIdentifier)
         }
     }
 

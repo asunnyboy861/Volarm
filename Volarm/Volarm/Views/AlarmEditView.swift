@@ -13,6 +13,7 @@ struct AlarmEditView: View {
     @State private var name: String
     @State private var hour: Int
     @State private var minute: Int
+    @State private var isAM: Bool
     @State private var isEnabled: Bool
     @State private var selectedDays: [Int]
     @State private var volume: Float
@@ -29,8 +30,12 @@ struct AlarmEditView: View {
         self.isNewAlarm = isNewAlarm
         self.alarm = alarm
         _name = State(initialValue: alarm?.name ?? "Alarm")
-        _hour = State(initialValue: alarm?.hour ?? 7)
+        _hour = State(initialValue: {
+            let h = alarm?.hour ?? 7
+            return h % 12 == 0 ? 12 : h % 12
+        }())
         _minute = State(initialValue: alarm?.minute ?? 0)
+        _isAM = State(initialValue: (alarm?.hour ?? 7) < 12)
         _isEnabled = State(initialValue: alarm?.isEnabled ?? true)
         _selectedDays = State(initialValue: alarm?.selectedDays ?? [1, 2, 3, 4, 5])
         _volume = State(initialValue: alarm?.volume ?? 0.8)
@@ -66,7 +71,7 @@ struct AlarmEditView: View {
                 }
             }
             .sheet(isPresented: $showingPaywall) {
-                paywallView
+                PaywallView()
             }
         }
         .preferredColorScheme(.dark)
@@ -77,14 +82,19 @@ struct AlarmEditView: View {
             HStack {
                 Spacer()
                 Picker("Hour", selection: $hour) {
-                    ForEach(0..<24, id: \.self) { Text("\(String(format: "%02d", $0))").tag($0) }
+                    ForEach(1...12, id: \.self) { Text("\($0)").tag($0) }
                 }
                 .pickerStyle(.wheel)
                 Text(":")
                     .font(.title)
                     .foregroundStyle(.white)
                 Picker("Minute", selection: $minute) {
-                    ForEach(0..<60, id: \.self) { Text("\(String(format: "%02d", $0))").tag($0) }
+                    ForEach(0..<60, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
+                }
+                .pickerStyle(.wheel)
+                Picker("AM/PM", selection: $isAM) {
+                    Text("AM").tag(true)
+                    Text("PM").tag(false)
                 }
                 .pickerStyle(.wheel)
                 Spacer()
@@ -114,6 +124,12 @@ struct AlarmEditView: View {
 
             Toggle("Gradual Volume", isOn: $isGradualVolume)
                 .tint(Color.volumeColor(for: volume))
+                .onChange(of: isGradualVolume) { _, newValue in
+                    if newValue && !purchaseManager.isProUser {
+                        isGradualVolume = false
+                        showingPaywall = true
+                    }
+                }
 
             if isGradualVolume {
                 Picker("Ramp Duration", selection: $gradualDuration) {
@@ -125,11 +141,7 @@ struct AlarmEditView: View {
             }
 
             Button {
-                if !purchaseManager.isProUser {
-                    showingPaywall = true
-                } else {
-                    volumeManager.playPreview(volume: volume, soundIdentifier: soundIdentifier)
-                }
+                volumeManager.playPreview(volume: volume, soundIdentifier: soundIdentifier)
             } label: {
                 Label("Preview Volume", systemImage: "speaker.wave.2.fill")
                     .foregroundStyle(Color.volumeColor(for: volume))
@@ -178,71 +190,18 @@ struct AlarmEditView: View {
         }
     }
 
-    private var paywallView: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(.yellow)
-
-                Text("Volarm Pro")
-                    .font(.title.bold())
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Unlimited alarms", systemImage: "checkmark.circle.fill")
-                    Label("Gradual volume wake-up", systemImage: "checkmark.circle.fill")
-                    Label("Custom sound import", systemImage: "checkmark.circle.fill")
-                    Label("Alarm groups", systemImage: "checkmark.circle.fill")
-                    Label("Widgets & Dynamic Island", systemImage: "checkmark.circle.fill")
-                    Label("Siri & Shortcuts", systemImage: "checkmark.circle.fill")
-                }
-                .font(.body)
-
-                if let product = purchaseManager.product {
-                    Text(product.displayPrice)
-                        .font(.title2.bold())
-                    Text("One-time purchase • No subscription")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Button {
-                    Task {
-                        if await purchaseManager.purchase() {
-                            showingPaywall = false
-                        }
-                    }
-                } label: {
-                    if purchaseManager.isLoading {
-                        ProgressView()
-                    } else {
-                        Text("Unlock Pro")
-                            .font(.headline)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.volumeMedium)
-
-                Button("Restore Purchases") {
-                    Task { await purchaseManager.restorePurchases() }
-                }
-                .font(.caption)
-            }
-            .padding()
-            .navigationTitle("Go Pro")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showingPaywall = false }
-                }
-            }
+    private var hour24: Int {
+        if isAM {
+            return hour == 12 ? 0 : hour
+        } else {
+            return hour == 12 ? 12 : hour + 12
         }
     }
 
     private func saveAlarm() {
         if let existingAlarm = alarm {
             existingAlarm.name = name
-            existingAlarm.hour = hour
+            existingAlarm.hour = hour24
             existingAlarm.minute = minute
             existingAlarm.isEnabled = isEnabled
             existingAlarm.selectedDays = selectedDays
@@ -267,7 +226,7 @@ struct AlarmEditView: View {
         } else {
             let newAlarm = AlarmModel(
                 name: name,
-                hour: hour,
+                hour: hour24,
                 minute: minute,
                 isEnabled: isEnabled,
                 selectedDays: selectedDays,
