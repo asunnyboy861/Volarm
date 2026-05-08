@@ -35,6 +35,8 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
     }
 
     private var proSection: some View {

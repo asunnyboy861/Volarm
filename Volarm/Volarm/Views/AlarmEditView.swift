@@ -23,6 +23,8 @@ struct AlarmEditView: View {
     @State private var gradualDuration: Int
     @State private var label: String
     @State private var showingPaywall = false
+    @State private var showingScheduleError = false
+    @State private var scheduleErrorMessage = ""
 
     private var alarm: AlarmModel?
 
@@ -73,8 +75,19 @@ struct AlarmEditView: View {
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
             }
+            .alert("Scheduling Error", isPresented: $showingScheduleError) {
+                Button("OK") { }
+            } message: {
+                Text(scheduleErrorMessage)
+            }
         }
         .preferredColorScheme(.dark)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
+        .onDisappear {
+            VolumeManager.shared.stopPreview()
+            SoundManager.shared.stopPreview()
+        }
     }
 
     private var timeSection: some View {
@@ -220,7 +233,8 @@ struct AlarmEditView: View {
                         try await AlarmScheduler.shared.scheduleAlarm(existingAlarm)
                     }
                 } catch {
-                    print("Failed to reschedule alarm: \(error)")
+                    scheduleErrorMessage = "Failed to reschedule alarm: \(error.localizedDescription)"
+                    showingScheduleError = true
                 }
             }
         } else {
@@ -243,7 +257,8 @@ struct AlarmEditView: View {
                 do {
                     try await AlarmScheduler.shared.scheduleAlarm(newAlarm)
                 } catch {
-                    print("Failed to schedule alarm: \(error)")
+                    scheduleErrorMessage = "Failed to schedule alarm: \(error.localizedDescription)"
+                    showingScheduleError = true
                 }
             }
         }

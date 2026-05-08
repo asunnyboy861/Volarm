@@ -11,6 +11,11 @@ struct AlarmListView: View {
     @State private var showingPaywall = false
     @State private var alarmToDelete: AlarmModel?
     @State private var showingDeleteConfirm = false
+    @State private var selectedAlarm: AlarmModel?
+    @State private var showingEditAlarm = false
+    @State private var showingPermissionAlert = false
+    @State private var showingScheduleError = false
+    @State private var scheduleErrorMessage = ""
 
     private let freeAlarmLimit = 3
 
@@ -45,10 +50,10 @@ struct AlarmListView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        if canAddAlarm {
-                            showingAddAlarm = true
-                        } else {
+                        if !canAddAlarm {
                             showingPaywall = true
+                        } else {
+                            checkPermissionAndAddAlarm()
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -64,6 +69,11 @@ struct AlarmListView: View {
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
             }
+            .sheet(isPresented: $showingEditAlarm) {
+                if let alarm = selectedAlarm {
+                    AlarmEditView(alarm: alarm, isNewAlarm: false)
+                }
+            }
             .alert("Delete Alarm?", isPresented: $showingDeleteConfirm) {
                 Button("Cancel", role: .cancel) {
                     alarmToDelete = nil
@@ -78,6 +88,21 @@ struct AlarmListView: View {
                 if let alarm = alarmToDelete {
                     Text("\"\(alarm.name)\" will be permanently deleted.")
                 }
+            }
+            .alert("Alarm Permission Required", isPresented: $showingPermissionAlert) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Volarm needs alarm permission to schedule alarms. Please enable it in Settings.")
+            }
+            .alert("Scheduling Error", isPresented: $showingScheduleError) {
+                Button("OK") { }
+            } message: {
+                Text(scheduleErrorMessage)
             }
         }
         .preferredColorScheme(.dark)
@@ -155,7 +180,7 @@ struct AlarmListView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button {
-                showingAddAlarm = true
+                checkPermissionAndAddAlarm()
             } label: {
                 Label("Add Alarm", systemImage: "plus.circle.fill")
                     .font(.headline)
@@ -205,12 +230,13 @@ struct AlarmListView: View {
             }
 
             ForEach(alarms) { alarm in
-                NavigationLink {
-                    AlarmEditView(alarm: alarm, isNewAlarm: false)
-                } label: {
-                    AlarmCardView(alarm: alarm) { isEnabled in
-                        toggleAlarm(alarm, isEnabled: isEnabled)
-                    }
+                AlarmCardView(alarm: alarm) { isEnabled in
+                    toggleAlarm(alarm, isEnabled: isEnabled)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedAlarm = alarm
+                    showingEditAlarm = true
                 }
                 .listRowBackground(Color(hex: "#1C1C1E"))
                 .swipeActions(edge: .trailing) {
@@ -225,6 +251,23 @@ struct AlarmListView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func checkPermissionAndAddAlarm() {
+        Task {
+            do {
+                let authorized = try await AlarmScheduler.shared.requestAuthorization()
+                if authorized {
+                    showingAddAlarm = true
+                } else {
+                    showingPermissionAlert = true
+                }
+            } catch {
+                showingPermissionAlert = true
+            }
+        }
     }
 
     private func toggleAlarm(_ alarm: AlarmModel, isEnabled: Bool) {
@@ -239,7 +282,9 @@ struct AlarmListView: View {
                     AlarmScheduler.shared.cancelAlarm(id: alarm.id)
                 }
             } catch {
-                print("Failed to toggle alarm: \(error)")
+                scheduleErrorMessage = "Failed to \(isEnabled ? "schedule" : "cancel") alarm: \(error.localizedDescription)"
+                showingScheduleError = true
+                alarm.isEnabled = !isEnabled
             }
         }
 

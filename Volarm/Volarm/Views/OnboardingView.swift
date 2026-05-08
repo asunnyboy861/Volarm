@@ -45,6 +45,8 @@ struct OnboardingView: View {
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
         .preferredColorScheme(.dark)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
     }
 
     private func onboardingPage(icon: String, title: String, subtitle: String, color: Color) -> some View {
@@ -53,7 +55,7 @@ struct OnboardingView: View {
             Image(systemName: icon)
                 .font(.system(size: 70))
                 .foregroundStyle(color)
-                .symbolEffect(.pulse, options: .repeating, value: currentPage)
+                .symbolEffect(.pulse, options: .repeating.speed(0.5), value: currentPage)
 
             Text(title)
                 .font(.title.bold())

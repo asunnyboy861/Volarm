@@ -87,6 +87,8 @@ struct PaywallView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
     }
 
     private func featureRow(icon: String, text: String) -> some View {

@@ -51,6 +51,7 @@ struct AlarmCardView: View {
                 ))
                 .tint(Color.volumeColor(for: alarm.volume))
                 .labelsHidden()
+                .allowsHitTesting(true)
 
                 Text("\(Int(alarm.volume * 100))%")
                     .font(.caption2.bold().monospacedDigit())

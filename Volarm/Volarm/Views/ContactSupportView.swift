@@ -8,15 +8,16 @@ struct ContactSupportView: View {
     @State private var message = ""
     @State private var isSending = false
     @State private var showSuccess = false
-    @State private var errorMessage: String?
+    @State private var showError = false
+    @State private var errorMessage: String = ""
 
     private let topics = ["General", "Bug Report", "Feature Request", "Billing", "Other"]
     private let feedbackURL: String
 
     init() {
-        let url = ProcessInfo.processInfo.environment["FEEDBACK_BACKEND_URL"]
-            ?? "https://feedback-board.iocompile67692.workers.dev"
-        self.feedbackURL = url
+        let envURL = ProcessInfo.processInfo.environment["FEEDBACK_BACKEND_URL"]
+        let defaultURL = "https://feedback-board.iocompile67692.workers.dev"
+        self.feedbackURL = envURL ?? defaultURL
     }
 
     private var isFormValid: Bool {
@@ -49,13 +50,15 @@ struct ContactSupportView: View {
             } message: {
                 Text("Your feedback has been sent. We'll get back to you soon.")
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
+            .alert("Error", isPresented: $showError) {
+                Button("OK") { }
             } message: {
-                Text(errorMessage ?? "")
+                Text(errorMessage)
             }
         }
         .preferredColorScheme(.dark)
+        .frame(maxWidth: 720)
+        .frame(maxWidth: .infinity)
     }
 
     private var topicSection: some View {
@@ -122,11 +125,11 @@ struct ContactSupportView: View {
 
     private func sendMessage() {
         isSending = true
-        errorMessage = nil
 
         guard let url = URL(string: feedbackURL) else {
             isSending = false
             errorMessage = "Invalid feedback URL"
+            showError = true
             return
         }
 
@@ -150,10 +153,12 @@ struct ContactSupportView: View {
                 isSending = false
                 if let error = error {
                     errorMessage = error.localizedDescription
+                    showError = true
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     showSuccess = true
                 } else {
                     errorMessage = "Failed to send feedback. Please try again."
+                    showError = true
                 }
             }
         }.resume()
